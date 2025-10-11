@@ -1,0 +1,154 @@
+app-id: com.example.hardwaretoggle
+
+runtime: org.gnome.Platform
+runtime-version: "47"
+sdk: org.gnome.Sdk
+
+command: hardwaretoggle
+
+finish-args:
+  # Display
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # Allow spawning commands on host (for fallback)
+  - --talk-name=org.freedesktop.Flatpak
+
+modules:
+  - name: libinput
+    buildsystem: meson
+    config-opts:
+      - -Dlibwacom=false
+      - -Ddebug-gui=false
+      - -Dtests=false
+      - -Ddocumentation=false
+      - -Dzshcompletiondir=no
+    sources:
+      - type: archive
+        url: https://gitlab.freedesktop.org/libinput/libinput/-/archive/1.29.1/libinput-1.29.1.tar.gz
+        sha256: 98bb615d98ddc4607bddb13a7b7550d129eb8cd16f86cd5ca090207bc46b488b
+    cleanup:
+      - /etc
+      - /lib/udev
+      - /include
+      - /lib/pkgconfig
+      - /share/man
+      - /share/zsh
+    modules:
+      - name: mtdev
+        buildsystem: autotools
+        config-opts:
+          - --disable-static
+        sources:
+          - type: archive
+            url: https://bitmath.org/code/mtdev/mtdev-1.1.7.tar.bz2
+            sha256: a107adad2101fecac54ac7f9f0e0a0dd155d954193da55c2340c97f2ff1d814e
+          - type: shell
+            commands:
+              - cp -p /usr/share/automake-*/config.{sub,guess} config-aux/
+        cleanup:
+          - /bin
+          - /include
+          - /lib/*.la
+          - /lib/pkgconfig
+
+  - name: evtest
+    buildsystem: autotools
+    sources:
+      - type: archive
+        url: https://gitlab.freedesktop.org/libevdev/evtest/-/archive/evtest-1.35/evtest-evtest-1.35.tar.gz
+        sha256: 06dfe6b9760b78f3f73aca2120cbcb79339b33e59d5c79a49b4bd5d34844b054
+
+  - name: hardwaretoggle
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/applications
+      - DENORT_BIN=$PWD/denort ./deno compile --vendor --cached-only -A main.ts
+      - mv hardwaretoggle /app/bin/main
+
+      # Create launcher script
+      - |
+        cat > /app/bin/hardwaretoggle << 'EOF'
+        #!/bin/bash
+        export DENO_PYTHON_PATH=/usr/lib/$(uname -m)-linux-gnu/libpython3.12.so.1.0
+        /app/bin/main
+        EOF
+      - chmod +x /app/bin/hardwaretoggle
+      # Install desktop file
+      - |
+        cat > /app/share/applications/com.example.hardwaretoggle.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=Hardware Toggle
+        Comment=Manage input device access
+        Exec=hardwaretoggle
+        Icon=com.example.hardwaretoggle
+        Categories=System;Settings;
+        StartupNotify=true
+        EOF
+
+      # Install icon (placeholder - you should add a proper icon)
+      - mkdir -p /app/share/icons/hicolor/scalable/apps/
+      - |
+        cat > /app/share/icons/hicolor/scalable/apps/com.example.hardwaretoggle.svg << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+          <rect width="128" height="128" fill="#3584e4" rx="16"/>
+          <text x="64" y="74" text-anchor="middle" font-family="sans-serif" font-size="48" fill="white">⌨</text>
+        </svg>
+        EOF
+
+      # Install metainfo
+      - mkdir -p /app/share/metainfo/
+      - |
+        cat > /app/share/metainfo/com.example.hardwaretoggle.metainfo.xml << 'EOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <component type="desktop-application">
+          <id>com.example.hardwaretoggle</id>
+          <metadata_license>CC0-1.0</metadata_license>
+          <project_license>MIT</project_license>
+          <name>Hardware Toggle</name>
+          <summary>Manage input device access</summary>
+          <description>
+            <p>
+              Hardware Toggle allows you to grab and release input devices like keyboards and mice,
+              temporarily disabling them for system use while allowing specific applications to access them.
+            </p>
+          </description>
+          <launchable type="desktop-id">com.example.hardwaretoggle.desktop</launchable>
+          <categories>
+            <category>System</category>
+            <category>Settings</category>
+          </categories>
+          <content_rating type="oars-1.1"/>
+          <provides>
+            <binary>hardwaretoggle</binary>
+          </provides>
+          <releases>
+            <release version="1.0.0" date="2024-01-01">
+              <description>
+                <p>Initial release</p>
+              </description>
+            </release>
+          </releases>
+        </component>
+        EOF
+
+    sources:
+      - type: archive
+        url: https://github.com/denoland/deno/releases/download/v2.5.3/deno-x86_64-unknown-linux-gnu.zip
+        sha256: 421add1fbc9616bf0a6dee0e330804122043ab2bf8cd884fa9ab9afddf2aea67
+        only-arches:
+          - x86_64
+      - type: archive
+        url: https://github.com/denoland/deno/releases/download/v2.5.1/denort-x86_64-unknown-linux-gnu.zip
+        sha256: 8ea4c344bd945244186b60b2745f7cbe460f6bd8f8a7479b9dac2d57199fd298
+        only-arches:
+          - x86_64
+
+      # Local source (for development/testing)
+      - type: dir
+        path: .
+
+      - deno-sources.json
