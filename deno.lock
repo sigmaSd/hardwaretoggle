@@ -1,0 +1,31 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@denosaurs/python@0.4.5": "0.4.5",
+    "jsr:@sigma/gtk-py@*": "0.6.9",
+    "jsr:@sigma/gtk-py@0.6.9": "0.6.9",
+    "jsr:@sigma/gtk-py@~0.6.10": "0.6.10"
+  },
+  "jsr": {
+    "@denosaurs/python@0.4.5": {
+      "integrity": "c801f16b6daf1c98f9ee113a646b9cf42be8ef1dff4892714a44841308354127"
+    },
+    "@sigma/gtk-py@0.6.9": {
+      "integrity": "99644162c41e3b82033796bd4e761640377db4320e3ff984f9923d41b551e3f2",
+      "dependencies": [
+        "jsr:@denosaurs/python"
+      ]
+    },
+    "@sigma/gtk-py@0.6.10": {
+      "integrity": "16c2650318504807c7b9b5a3d6219b226192b752c440d2eb1719b00deb554222",
+      "dependencies": [
+        "jsr:@denosaurs/python"
+      ]
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@sigma/gtk-py@~0.6.10"
+    ]
+  }
+}

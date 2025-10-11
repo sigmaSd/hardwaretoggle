@@ -1,0 +1,6 @@
+{
+  "vendor": false,
+  "imports": {
+    "@sigma/gtk-py": "jsr:@sigma/gtk-py@^0.6.10"
+  }
+}
