@@ -22,19 +22,74 @@ const eventLoop = new DenoGLibEventLoop(GLib);
 interface Device {
   name: string;
   id: string;
-  eventPath: string;
+  eventPath?: string;
   type: string;
 }
 
 interface DeviceState extends Device {
   grabbed: boolean;
   process?: Deno.ChildProcess;
+  eventPath?: string; // Store for killing the right process
+}
+
+// Cache for Flatpak installation path
+let flatpakInstallPath: string | null | undefined = undefined;
+
+// Get the Flatpak installation path on the host
+async function getFlatpakInstallPath(): Promise<string | null> {
+  if (flatpakInstallPath !== undefined) {
+    return flatpakInstallPath;
+  }
+
+  const flatpakId = Deno.env.get("FLATPAK_ID");
+  if (!flatpakId) {
+    flatpakInstallPath = null;
+    return null;
+  }
+
+  try {
+    const cmd = new Deno.Command("flatpak-spawn", {
+      args: ["--host", "flatpak", "info", "--show-location", flatpakId],
+      stdout: "piped",
+      stderr: "piped",
+    });
+
+    const output = await cmd.output();
+    if (output.success) {
+      const path = new TextDecoder().decode(output.stdout).trim();
+      flatpakInstallPath = `${path}/files`;
+      return flatpakInstallPath;
+    }
+  } catch (error) {
+    console.error("Error getting Flatpak install path:", error);
+  }
+
+  flatpakInstallPath = null;
+  return null;
 }
 
 async function listDevices(): Promise<Device[]> {
   try {
-    const cmd = new Deno.Command("pkexec", {
-      args: ["libinput", "list-devices"],
+    const flatpakPath = await getFlatpakInstallPath();
+
+    let command: string;
+    let args: string[];
+
+    if (flatpakPath) {
+      // Use host's pkexec with bundled libinput
+      command = "flatpak-spawn";
+      args = [
+        "--host",
+        "pkexec",
+        `${flatpakPath}/libexec/libinput/libinput-list-devices`,
+      ];
+    } else {
+      command = "pkexec";
+      args = ["libinput", "list-devices"];
+    }
+
+    const cmd = new Deno.Command(command, {
+      args: args,
       stdout: "piped",
       stderr: "piped",
     });
@@ -85,10 +140,31 @@ async function listDevices(): Promise<Device[]> {
 
 function grabDevice(eventPath: string): Deno.ChildProcess | null {
   try {
-    const cmd = new Deno.Command("pkexec", {
-      args: ["evtest", "--grab", eventPath],
-      stdout: "null",
-      stderr: "null",
+    // Note: This must be sync, so we use the cached value
+    // Make sure getFlatpakInstallPath() was called during listDevices()
+    const flatpakPath = flatpakInstallPath;
+
+    let command: string;
+    let args: string[];
+
+    if (flatpakPath) {
+      command = "flatpak-spawn";
+      args = [
+        "--host",
+        "pkexec",
+        `${flatpakPath}/bin/evtest`,
+        "--grab",
+        eventPath,
+      ];
+    } else {
+      command = "pkexec";
+      args = ["evtest", "--grab", eventPath];
+    }
+
+    const cmd = new Deno.Command(command, {
+      args: args,
+      stdout: "piped",
+      stderr: "piped",
     });
 
     return cmd.spawn();
@@ -98,15 +174,52 @@ function grabDevice(eventPath: string): Deno.ChildProcess | null {
   }
 }
 
-async function releaseDevice(process: Deno.ChildProcess | undefined) {
+async function releaseDevice(
+  process: Deno.ChildProcess | undefined,
+  eventPath?: string,
+) {
   if (process) {
     try {
-      const cmd = new Deno.Command("pkexec", {
-        args: ["kill", "-TERM", process.pid.toString()],
-        stdout: "null",
-        stderr: "null",
-      });
-      await cmd.output();
+      const flatpakPath = flatpakInstallPath;
+
+      if (flatpakPath && eventPath) {
+        // In Flatpak: find and kill the specific evtest process by matching the device path
+        // Kill all matching PIDs in a single pkexec call to avoid multiple auth prompts
+        const findCmd = new Deno.Command("flatpak-spawn", {
+          args: [
+            "--host",
+            "pgrep",
+            "-f",
+            `evtest --grab ${eventPath}`,
+          ],
+          stdout: "piped",
+          stderr: "piped",
+        });
+
+        const findOutput = await findCmd.output();
+        if (findOutput.success) {
+          const pids = new TextDecoder().decode(findOutput.stdout).trim().split(
+            "\n",
+          ).filter((pid) => pid);
+          if (pids.length > 0) {
+            // Kill all PIDs in one pkexec call
+            const killCmd = new Deno.Command("flatpak-spawn", {
+              args: ["--host", "pkexec", "kill", "-TERM", ...pids],
+              stdout: "null",
+              stderr: "null",
+            });
+            await killCmd.output();
+          }
+        }
+      } else {
+        // Native: use the PID directly
+        const cmd = new Deno.Command("pkexec", {
+          args: ["kill", "-TERM", process.pid.toString()],
+          stdout: "null",
+          stderr: "null",
+        });
+        await cmd.output();
+      }
     } catch (e) {
       console.error("Error killing process:", e);
     }
@@ -287,7 +400,7 @@ export class MainWindow {
 
     if (btn.get_active().valueOf()) {
       // Grab device
-      const process = grabDevice(state.eventPath);
+      const process = grabDevice(state.eventPath!);
       if (process) {
         state.grabbed = true;
         state.process = process;
@@ -298,7 +411,7 @@ export class MainWindow {
       }
     } else {
       // Release device
-      releaseDevice(state.process);
+      releaseDevice(state.process, state.eventPath);
       state.grabbed = false;
       state.process = undefined;
       this.#updateButtonLabel(btnLabel, false);
@@ -308,7 +421,7 @@ export class MainWindow {
 
   #onCloseRequest = async () => {
     for (const [_, state] of this.#devices) {
-      await releaseDevice(state.process);
+      await releaseDevice(state.process, state.eventPath);
     }
 
     eventLoop.stop();
@@ -335,7 +448,7 @@ class App extends Adw.Application {
 }
 
 if (import.meta.main) {
-  const app = new App(kw`application_id=${"com.example.inputdevicemanager"}`);
+  const app = new App(kw`application_id=${"com.example.hardwaretoggle"}`);
   const signal = python.import("signal");
 
   GLib.unix_signal_add(
