@@ -1,4 +1,4 @@
-app-id: com.example.hardwaretoggle
+app-id: io.github.sigmasd.hardwaretoggle
 
 runtime: org.gnome.Platform
 runtime-version: "47"
@@ -77,13 +77,13 @@ modules:
       - chmod +x /app/bin/hardwaretoggle
       # Install desktop file
       - |
-        cat > /app/share/applications/com.example.hardwaretoggle.desktop << 'EOF'
+        cat > /app/share/applications/io.github.sigmasd.hardwaretoggle.desktop << 'EOF'
         [Desktop Entry]
         Type=Application
         Name=Hardware Toggle
         Comment=Manage input device access
         Exec=hardwaretoggle
-        Icon=com.example.hardwaretoggle
+        Icon=io.github.sigmasd.hardwaretoggle
         Categories=System;Settings;
         StartupNotify=true
         EOF
@@ -91,7 +91,7 @@ modules:
       # Install icon (placeholder - you should add a proper icon)
       - mkdir -p /app/share/icons/hicolor/scalable/apps/
       - |
-        cat > /app/share/icons/hicolor/scalable/apps/com.example.hardwaretoggle.svg << 'EOF'
+        cat > /app/share/icons/hicolor/scalable/apps/io.github.sigmasd.hardwaretoggle.svg << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
           <rect width="128" height="128" fill="#3584e4" rx="16"/>
@@ -102,10 +102,10 @@ modules:
       # Install metainfo
       - mkdir -p /app/share/metainfo/
       - |
-        cat > /app/share/metainfo/com.example.hardwaretoggle.metainfo.xml << 'EOF'
+        cat > /app/share/metainfo/io.github.sigmasd.hardwaretoggle.metainfo.xml << 'EOF'
         <?xml version="1.0" encoding="UTF-8"?>
         <component type="desktop-application">
-          <id>com.example.hardwaretoggle</id>
+          <id>io.github.sigmasd.hardwaretoggle</id>
           <metadata_license>CC0-1.0</metadata_license>
           <project_license>MIT</project_license>
           <name>Hardware Toggle</name>
@@ -116,7 +116,7 @@ modules:
               temporarily disabling them for system use while allowing specific applications to access them.
             </p>
           </description>
-          <launchable type="desktop-id">com.example.hardwaretoggle.desktop</launchable>
+          <launchable type="desktop-id">io.github.sigmasd.hardwaretoggle.desktop</launchable>
           <categories>
             <category>System</category>
             <category>Settings</category>

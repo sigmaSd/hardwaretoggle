@@ -448,7 +448,7 @@ class App extends Adw.Application {
 }
 
 if (import.meta.main) {
-  const app = new App(kw`application_id=${"com.example.hardwaretoggle"}`);
+  const app = new App(kw`application_id=${"io.github.sigmasd.hardwaretoggle"}`);
   const signal = python.import("signal");
 
   GLib.unix_signal_add(
