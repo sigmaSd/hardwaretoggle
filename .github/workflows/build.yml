@@ -61,11 +61,11 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Create or Update Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Latest Build
+          tag_name: build-${{ github.sha }}
+          name: Build ${{ github.sha }}
           files: |
             artifacts/hardwaretoggle-x86_64.flatpak
             artifacts/hardwaretoggle-aarch64.flatpak
@@ -73,7 +73,7 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            Latest automated build from commit ${{ github.sha }}
+            Automated build from commit ${{ github.sha }}
 
             Download the appropriate flatpak for your architecture:
             - `hardwaretoggle-x86_64.flatpak` for Intel/AMD (64-bit)
