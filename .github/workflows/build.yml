@@ -1,0 +1,82 @@
+name: Build Flatpak
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  flatpak:
+    name: "Flatpak (${{ matrix.arch }})"
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-47
+      options: --privileged
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        if: ${{ matrix.arch != 'x86_64' }}
+        run: |
+          # Use the static binaries because it's unable to use a package manager
+          curl https://download.docker.com/linux/static/stable/x86_64/docker-26.0.0.tgz --output ./docker.tgz
+          tar xzvf docker.tgz
+          mv docker/* /usr/bin
+
+      - name: Set up QEMU
+        if: ${{ matrix.arch != 'x86_64' }}
+        id: qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: hardwaretoggle-${{ matrix.arch }}.flatpak
+          manifest-path: io.github.sigmasd.hardwaretoggle.yml
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+          arch: ${{ matrix.arch }}
+
+  release:
+    name: "Create Release"
+    needs: flatpak
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          files: |
+            artifacts/hardwaretoggle-x86_64.flatpak
+            artifacts/hardwaretoggle-aarch64.flatpak
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            Latest automated build from commit ${{ github.sha }}
+
+            Download the appropriate flatpak for your architecture:
+            - `hardwaretoggle-x86_64.flatpak` for Intel/AMD (64-bit)
+            - `hardwaretoggle-aarch64.flatpak` for ARM (64-bit)
+
+            To install: `flatpak install --user hardwaretoggle-<arch>.flatpak`
