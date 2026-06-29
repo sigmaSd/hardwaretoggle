@@ -1,31 +1,24 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@denosaurs/python@0.4.5": "0.4.5",
-    "jsr:@sigma/gtk-py@*": "0.6.9",
-    "jsr:@sigma/gtk-py@0.6.9": "0.6.9",
-    "jsr:@sigma/gtk-py@~0.6.10": "0.6.10"
+    "jsr:@sigma/deno-compat@0.23.0": "0.23.0",
+    "jsr:@sigmasd/gtk@0.65": "0.65.0",
+    "jsr:@sigmasd/gtk@0.65.0": "0.65.0"
   },
   "jsr": {
-    "@denosaurs/python@0.4.5": {
-      "integrity": "c801f16b6daf1c98f9ee113a646b9cf42be8ef1dff4892714a44841308354127"
+    "@sigma/deno-compat@0.23.0": {
+      "integrity": "3e116e19096601c3e078311864b653a207592195ae6a3f634a45931eb1a21481"
     },
-    "@sigma/gtk-py@0.6.9": {
-      "integrity": "99644162c41e3b82033796bd4e761640377db4320e3ff984f9923d41b551e3f2",
+    "@sigmasd/gtk@0.65.0": {
+      "integrity": "b8a2eb49b07f9b79c00a4c80ad7afc704c306e69775fd4cf3f916ba38344e4b6",
       "dependencies": [
-        "jsr:@denosaurs/python"
-      ]
-    },
-    "@sigma/gtk-py@0.6.10": {
-      "integrity": "16c2650318504807c7b9b5a3d6219b226192b752c440d2eb1719b00deb554222",
-      "dependencies": [
-        "jsr:@denosaurs/python"
+        "jsr:@sigma/deno-compat"
       ]
     }
   },
   "workspace": {
     "dependencies": [
-      "jsr:@sigma/gtk-py@~0.6.10"
+      "jsr:@sigmasd/gtk@0.65"
     ]
   }
 }
