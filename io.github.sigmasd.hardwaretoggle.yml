@@ -64,7 +64,7 @@ modules:
     buildsystem: simple
     build-commands:
       - mkdir -p /app/share/applications
-      - DENORT_BIN=$PWD/denort ./deno compile --vendor --cached-only -A main.ts
+      - DENORT_BIN=$PWD/denort ./deno compile --no-check --vendor --cached-only -A main.ts
       - mv hardwaretoggle /app/bin/main
 
       # Create launcher script
